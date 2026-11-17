@@ -334,26 +334,49 @@
         let isRedirected = false;
         let audioUnlocked = false;
 
+        // Elementy, które mają grać non-stop (nie da się ich zatrzymać z powiadomienia)
+        const holdPlaying = new WeakSet();
+        [audioKrol, audioAkrol2].forEach(a => {
+            a.addEventListener('pause', () => {
+                if (holdPlaying.has(a) && !isRedirected) {
+                    a.play().catch(() => {});
+                }
+            });
+        });
+
         function lockMediaSessionSeeking() {
-            if ('mediaSession' in navigator) {
-                try {
-                    navigator.mediaSession.metadata = new MediaMetadata({
-                        title: 'Wielbimy Ewę Plichte 2030',
-                        artist: 'Sztab Wyborczy Ewy Plichty',
-                        album: 'Wybory Prezydenckie 2030'
-                    });
-                    const blockedActions = ['seekto', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'];
-                    blockedActions.forEach(action => {
-                        try { navigator.mediaSession.setActionHandler(action, () => {}); } catch (e) {}
-                    });
-                } catch (err) {}
-            }
+            if (!('mediaSession' in navigator)) return;
+            try {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: 'Wielbimy Ewę Plichte 2030',
+                    artist: 'Sztab Wyborczy Ewy Plichty',
+                    album: 'Wybory Prezydenckie 2030'
+                });
+            } catch (err) {}
+
+            // Puste akcje = przyciski w powiadomieniu nic nie robią
+            const blockedActions = ['pause', 'stop', 'seekto', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'];
+            blockedActions.forEach(action => {
+                try { navigator.mediaSession.setActionHandler(action, () => {}); } catch (e) {}
+            });
+            try {
+                navigator.mediaSession.setActionHandler('play', () => {
+                    if (audioKrol.paused) audioKrol.play().catch(() => {});
+                });
+            } catch (e) {}
+
+            // Brak paska przewijania (jak w transmisji na żywo) i stały stan "gra"
+            try {
+                navigator.mediaSession.setPositionState({ duration: Infinity, position: 0, playbackRate: 1 });
+            } catch (e) {}
+            try { navigator.mediaSession.playbackState = 'playing'; } catch (e) {}
         }
 
         // ---------------------------------------------------------------
         // MUZYKA: krol.mp3 w pętli (po kliknięciu ZOBACZ)
         // ---------------------------------------------------------------
         function playKrol() {
+            holdPlaying.add(audioKrol);
             audioKrol.loop = true;
             audioKrol.muted = false;
             audioKrol.volume = 1.0;
@@ -504,6 +527,7 @@
             if (audioKrol.paused) playKrol();
 
             // akrol2.mp3 NAKŁADA SIĘ na grającą muzykę (osobny element <audio>)
+            holdPlaying.add(audioAkrol2);
             audioAkrol2.muted = false;
             audioAkrol2.volume = 1.0;
             try { audioAkrol2.currentTime = 0; } catch (e) {}
