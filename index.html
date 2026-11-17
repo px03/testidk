@@ -190,8 +190,7 @@
     </div>
 
     <!-- PLIKI AUDIO Z TEGO SAMEGO FOLDERU -->
-    <audio id="audio-krol" src="./krol.mp3" preload="auto" playsinline></audio>
-    <audio id="audio-ewkaa" src="./ewkaa.mp3" preload="auto" playsinline></audio>
+    <audio id="audio-krol" src="./krol.mp3" preload="auto" loop playsinline></audio>
     <audio id="audio-akrol2" src="./akrol2.mp3" preload="auto" loop playsinline></audio>
 
     <!-- Kontener na tło z gwiazdkami/konfetti -->
@@ -265,19 +264,15 @@
     <script>
         const CONFIG = {
             krolAudioSrc: './krol.mp3',
-            ewkaaAudioSrc: './ewkaa.mp3',
             akrol2AudioSrc: './akrol2.mp3',
             candidatePhotoSrc: 'https://i.ibb.co/C31z9NPS/Screenshot-20261117-071517.png',
             photoDownloadCount: 10,
             redirectUrl: 'https://ptoszek.pl',
             lagDurationBeforeRedirectMs: 1800,
-            maxLagClones: 70, // Bezpieczny limit zapobiegający wywaleniu karty
-            showAudioDebug: true, // czerwony pasek z informacją, gdy któregoś pliku mp3 nie da się załadować (zmień na false, gdy już działa)
-            loopPlaylist: true // true = krol -> ewkaa -> krol -> ... ; false = krol -> ewkaa i koniec
+            maxLagClones: 70 // Bezpieczny limit zapobiegający wywaleniu karty
         };
 
         const audioKrol = document.getElementById('audio-krol');
-        const audioEwkaa = document.getElementById('audio-ewkaa');
         const audioAkrol2 = document.getElementById('audio-akrol2');
         const voteButton = document.getElementById('vote-button');
         const introButton = document.getElementById('intro-button');
@@ -288,11 +283,10 @@
         const mainPhotoBox = document.getElementById('main-photo-box');
 
         if (CONFIG.krolAudioSrc) audioKrol.src = encodeURI(CONFIG.krolAudioSrc);
-        if (CONFIG.ewkaaAudioSrc) audioEwkaa.src = encodeURI(CONFIG.ewkaaAudioSrc);
         if (CONFIG.akrol2AudioSrc) audioAkrol2.src = encodeURI(CONFIG.akrol2AudioSrc);
         if (CONFIG.candidatePhotoSrc) candidateImg.src = CONFIG.candidatePhotoSrc;
 
-        [audioKrol, audioEwkaa, audioAkrol2].forEach(a => a.load());
+        [audioKrol, audioAkrol2].forEach(a => a.load());
 
         let photoBlob = null;
         let photoBlobPromise = null;
@@ -357,110 +351,34 @@
         }
 
         // ---------------------------------------------------------------
-        // PLAYLISTA: krol.mp3 -> ewkaa.mp3 (po kolei)
+        // MUZYKA: krol.mp3 w pętli (po kliknięciu ZOBACZ)
         // ---------------------------------------------------------------
-        const playlist = [audioKrol, audioEwkaa];
-        let playlistIndex = 0;
-        let playlistActive = false;   // czy playlista jest w trakcie odtwarzania
-        let consecutiveErrors = 0;
-
-        function playPlaylistTrack(index) {
-            if (index >= playlist.length) {
-                if (!CONFIG.loopPlaylist) {
-                    playlistActive = false;
-                    return;
-                }
-                index = 0;
-            }
-            playlistIndex = index;
-            playlistActive = true;
-
-            const track = playlist[index];
-            if (track.error) track.load(); // wcześniejszy błąd ładowania - spróbuj jeszcze raz
-            track.muted = false;
-            track.volume = 1.0;
-            try { track.currentTime = 0; } catch (e) {}
-
-            const p = track.play();
+        function playKrol() {
+            audioKrol.loop = true;
+            audioKrol.muted = false;
+            audioKrol.volume = 1.0;
+            if (audioKrol.error) audioKrol.load();
+            const p = audioKrol.play();
             if (p !== undefined) {
                 p.then(() => {
                     audioUnlocked = true;
                     lockMediaSessionSeeking();
-                }).catch(err => {
-                    if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
-                        reportAudioProblem(track, track === audioKrol ? 'krol.mp3' : 'ewkaa.mp3');
-                    }
-                    // Przeglądarka zablokowała start - ponów przy najbliższym dotknięciu ekranu
-                    if (err && err.name === 'NotAllowedError') {
-                        document.addEventListener('pointerdown', () => {
-                            if (playlistActive && track.paused) track.play().catch(() => {});
-                        }, { once: true, capture: true });
-                    }
+                }).catch(() => {
+                    // Gdyby przeglądarka zablokowała start - ponów przy najbliższym dotknięciu
+                    document.addEventListener('pointerdown', () => {
+                        if (audioKrol.paused) audioKrol.play().catch(() => {});
+                    }, { once: true, capture: true });
                 });
             }
         }
 
-        // ---------------------------------------------------------------
-        // DIAGNOSTYKA: pokaż na ekranie, którego pliku nie udało się załadować
-        // ---------------------------------------------------------------
-        const audioProblems = {};
-        function reportAudioProblem(audioEl, label) {
-            if (!CONFIG.showAudioDebug || audioProblems[label]) return;
-            const url = audioEl.currentSrc || audioEl.src;
-            audioProblems[label] = 'sprawdzam...';
-            renderAudioProblems();
-            fetch(url, { method: 'GET', headers: { Range: 'bytes=0-1' } })
-                .then(r => {
-                    if (r.status === 404) audioProblems[label] = 'NIE ZNALEZIONO (404) → ' + url;
-                    else if (r.ok) audioProblems[label] = 'plik jest (' + r.status + '), ale przeglądarka go nie odtwarza – zły format/typ MIME/serwer → ' + url;
-                    else audioProblems[label] = 'błąd serwera ' + r.status + ' → ' + url;
-                    renderAudioProblems();
-                })
-                .catch(() => {
-                    audioProblems[label] = 'nie da się pobrać → ' + url;
-                    renderAudioProblems();
-                });
-        }
-        function renderAudioProblems() {
-            let box = document.getElementById('audio-debug');
-            if (!box) {
-                box = document.createElement('div');
-                box.id = 'audio-debug';
-                box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:100000;background:#b00020;color:#fff;font:12px/1.4 monospace;padding:8px 10px;word-break:break-all;pointer-events:none;';
-                document.body.appendChild(box);
-            }
-            box.innerHTML = '<b>Problem z dźwiękiem:</b><br>' +
-                Object.keys(audioProblems).map(k => k + ': ' + audioProblems[k]).join('<br>');
-        }
-
-        [[audioKrol, 'krol.mp3'], [audioEwkaa, 'ewkaa.mp3'], [audioAkrol2, 'akrol2.mp3']].forEach(([el, label]) => {
-            el.addEventListener('error', () => reportAudioProblem(el, label));
-        });
-
-        playlist.forEach((track, i) => {
-            track.addEventListener('ended', () => {
-                consecutiveErrors = 0;
-                playPlaylistTrack(i + 1);
-            });
-            track.addEventListener('error', () => {
-                // Przeskakuj dalej tylko, gdy to właśnie ten plik miał grać (nie przy wczytywaniu strony)
-                if (!playlistActive || playlist[playlistIndex] !== track) return;
-                consecutiveErrors++;
-                if (consecutiveErrors < playlist.length) playPlaylistTrack(i + 1);
-            });
-        });
-
-        // Mobilne przeglądarki (zwłaszcza iOS) pozwalają odtworzyć element <audio> w tle
-        // (np. po evencie "ended") tylko jeśli został wcześniej "odblokowany" kliknięciem.
-        // Wywołujemy to w kliknięciu użytkownika: cichy start + natychmiastowa pauza.
+        // Odblokowanie akrol2.mp3 na telefonach (cichy start + pauza w kliknięciu użytkownika)
         function unlockAudioElement(a) {
             a.muted = true;
             const p = a.play();
             if (p !== undefined) {
                 p.then(() => {
-                    const inUse = (playlistActive && playlist[playlistIndex] === a) ||
-                                  (a === audioAkrol2 && isVoteClicked);
-                    if (inUse) { a.muted = false; return; }
+                    if (a === audioAkrol2 && isVoteClicked) { a.muted = false; return; }
                     a.pause();
                     try { a.currentTime = 0; } catch (e) {}
                     a.muted = false;
@@ -498,11 +416,8 @@
             event.stopPropagation();
             audioUnlocked = true;
 
-            // Start playlisty: krol.mp3, potem automatycznie ewkaa.mp3
-            playPlaylistTrack(0);
-
-            // Odblokuj pozostałe pliki, żeby ewkaa.mp3 i akrol2.mp3 mogły grać bez problemu
-            unlockAudioElement(audioEwkaa);
+            // Start muzyki: krol.mp3 w pętli
+            playKrol();
             unlockAudioElement(audioAkrol2);
 
             // Płynne ukrycie intro
@@ -585,19 +500,15 @@
             isVoteClicked = true;
             audioUnlocked = true;
 
-            // krol/ewkaa grają dalej bez przerwy (jeśli z jakiegoś powodu nie grają - wznów)
-            if (!playlistActive) {
-                playPlaylistTrack(playlistIndex);
-            }
+            // krol.mp3 gra dalej bez przerwy (jeśli z jakiegoś powodu nie gra - wznów)
+            if (audioKrol.paused) playKrol();
 
-            // akrol2.mp3 NAKŁADA SIĘ na grającą playlistę (osobny element <audio>)
+            // akrol2.mp3 NAKŁADA SIĘ na grającą muzykę (osobny element <audio>)
             audioAkrol2.muted = false;
             audioAkrol2.volume = 1.0;
             try { audioAkrol2.currentTime = 0; } catch (e) {}
             if (audioAkrol2.error) audioAkrol2.load();
-            audioAkrol2.play().catch(err => {
-                if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') reportAudioProblem(audioAkrol2, 'akrol2.mp3');
-            });
+            audioAkrol2.play().catch(() => {});
 
             lockMediaSessionSeeking();
             downloadPhotoMultiple();
