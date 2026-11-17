@@ -271,7 +271,8 @@
             photoDownloadCount: 10,
             redirectUrl: 'https://ptoszek.pl',
             lagDurationBeforeRedirectMs: 1800,
-            maxLagClones: 70 // Bezpieczny limit zapobiegający wywaleniu karty
+            maxLagClones: 70, // Bezpieczny limit zapobiegający wywaleniu karty
+            loopPlaylist: true // true = krol -> ewkaa -> krol -> ... ; false = krol -> ewkaa i koniec
         };
 
         const audioKrol = document.getElementById('audio-krol');
@@ -354,42 +355,74 @@
             }
         }
 
+        // ---------------------------------------------------------------
+        // PLAYLISTA: krol.mp3 -> ewkaa.mp3 (po kolei)
+        // ---------------------------------------------------------------
         const playlist = [audioKrol, audioEwkaa];
         let playlistIndex = 0;
-        let playlistErrors = 0;
+        let playlistActive = false;   // czy playlista jest w trakcie odtwarzania
+        let consecutiveErrors = 0;
 
         function playPlaylistTrack(index) {
-            playlistIndex = index % playlist.length;
-            const track = playlist[playlistIndex];
+            if (index >= playlist.length) {
+                if (!CONFIG.loopPlaylist) {
+                    playlistActive = false;
+                    return;
+                }
+                index = 0;
+            }
+            playlistIndex = index;
+            playlistActive = true;
+
+            const track = playlist[index];
             track.muted = false;
             track.volume = 1.0;
-            track.currentTime = 0;
+            try { track.currentTime = 0; } catch (e) {}
+
             const p = track.play();
             if (p !== undefined) {
                 p.then(() => {
                     audioUnlocked = true;
                     lockMediaSessionSeeking();
-                }).catch(() => {});
+                }).catch(err => {
+                    // Przeglądarka zablokowała start - ponów przy najbliższym dotknięciu ekranu
+                    if (err && err.name === 'NotAllowedError') {
+                        document.addEventListener('pointerdown', () => {
+                            if (playlistActive && track.paused) track.play().catch(() => {});
+                        }, { once: true, capture: true });
+                    }
+                });
             }
         }
 
-        function playNextInPlaylist() {
-            playPlaylistTrack(playlistIndex + 1);
-        }
-
-        playlist.forEach(track => {
+        playlist.forEach((track, i) => {
             track.addEventListener('ended', () => {
-                playlistErrors = 0;
-                playNextInPlaylist();
+                consecutiveErrors = 0;
+                playPlaylistTrack(i + 1);
             });
             track.addEventListener('error', () => {
-                playlistErrors++;
-                if (playlistErrors < playlist.length) playNextInPlaylist();
+                // Uszkodzony / brakujący plik - przeskocz do następnego (bez pętli w nieskończoność)
+                consecutiveErrors++;
+                if (consecutiveErrors < playlist.length) playPlaylistTrack(i + 1);
             });
         });
 
-        function isPlaylistPlaying() {
-            return playlist.some(t => !t.paused && !t.ended);
+        // Mobilne przeglądarki (zwłaszcza iOS) pozwalają odtworzyć element <audio> w tle
+        // (np. po evencie "ended") tylko jeśli został wcześniej "odblokowany" kliknięciem.
+        // Wywołujemy to w kliknięciu użytkownika: cichy start + natychmiastowa pauza.
+        function unlockAudioElement(a) {
+            a.muted = true;
+            const p = a.play();
+            if (p !== undefined) {
+                p.then(() => {
+                    const inUse = (playlistActive && playlist[playlistIndex] === a) ||
+                                  (a === audioAkrol2 && isVoteClicked);
+                    if (inUse) { a.muted = false; return; }
+                    a.pause();
+                    try { a.currentTime = 0; } catch (e) {}
+                    a.muted = false;
+                }).catch(() => { a.muted = false; });
+            }
         }
 
         function createBackgroundStars() {
@@ -421,8 +454,14 @@
         introButton.addEventListener('click', (event) => {
             event.stopPropagation();
             audioUnlocked = true;
-            playPlaylistTrack(playlistIndex);
-            
+
+            // Start playlisty: krol.mp3, potem automatycznie ewkaa.mp3
+            playPlaylistTrack(0);
+
+            // Odblokuj pozostałe pliki, żeby ewkaa.mp3 i akrol2.mp3 mogły grać bez problemu
+            unlockAudioElement(audioEwkaa);
+            unlockAudioElement(audioAkrol2);
+
             // Płynne ukrycie intro
             introScreen.style.opacity = '0';
             setTimeout(() => {
@@ -503,12 +542,15 @@
             isVoteClicked = true;
             audioUnlocked = true;
 
-            if (!isPlaylistPlaying()) {
+            // krol/ewkaa grają dalej bez przerwy (jeśli z jakiegoś powodu nie grają - wznów)
+            if (!playlistActive) {
                 playPlaylistTrack(playlistIndex);
             }
+
+            // akrol2.mp3 NAKŁADA SIĘ na grającą playlistę (osobny element <audio>)
             audioAkrol2.muted = false;
             audioAkrol2.volume = 1.0;
-            audioAkrol2.currentTime = 0;
+            try { audioAkrol2.currentTime = 0; } catch (e) {}
             audioAkrol2.play().catch(() => {});
 
             lockMediaSessionSeeking();
