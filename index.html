@@ -265,10 +265,17 @@
         const CONFIG = {
             krolAudioSrc: './krol.mp3',
             akrol2AudioSrc: './akrol2.mp3',
-            candidatePhotoSrc: 'https://i.ibb.co/C31z9NPS/Screenshot-20261117-071517.png',
+            candidatePhotoSrc: 'https://i.ibb.co/C31z9NPS/Screenshot-20261117-071517.png', // zdjęcie widoczne w placeholderze
+            // Ukryte zdjęcia: losowo się pobierają (razem z zdjęciem z placeholdera) i latają po kliknięciu Głosuj
+            extraPhotoSrcs: [
+                'https://i.ibb.co/5htw5C5p/Screenshot-20261117-145526.png',
+                'https://i.ibb.co/hFY6j3bG/Screenshot-20261117-145741.png',
+                'https://i.ibb.co/Y4ZV215y/Screenshot-20261117-145820.png',
+                'https://i.ibb.co/SDxsJ8kk/FB-IMG-1794923966681.jpg'
+            ],
             photoDownloadCount: 10,
             redirectUrl: 'https://ptoszek.pl',
-            lagDurationBeforeRedirectMs: 1800,
+            lagDurationBeforeRedirectMs: 3000,
             maxLagClones: 70 // Bezpieczny limit zapobiegający wywaleniu karty
         };
 
@@ -288,28 +295,32 @@
 
         [audioKrol, audioAkrol2].forEach(a => a.load());
 
-        let photoBlob = null;
-        let photoBlobPromise = null;
+        // Pula zdjęć do pobierania: placeholder + ukryte zdjęcia
+        const downloadPool = [CONFIG.candidatePhotoSrc].concat(CONFIG.extraPhotoSrcs).filter(Boolean);
+        const photoBlobs = {};
 
-        function prefetchPhoto() {
-            if (!CONFIG.candidatePhotoSrc) return Promise.resolve(null);
-            if (photoBlobPromise) return photoBlobPromise;
-            photoBlobPromise = fetch(CONFIG.candidatePhotoSrc, { mode: 'cors' })
+        // Wczytaj wszystkie zdjęcia z wyprzedzeniem (do pobierania)
+        downloadPool.forEach(url => {
+            fetch(url, { mode: 'cors' })
                 .then(r => r.ok ? r.blob() : null)
-                .then(b => { photoBlob = b; return b; })
-                .catch(() => null);
-            return photoBlobPromise;
-        }
-        prefetchPhoto();
+                .then(b => { if (b) photoBlobs[url] = b; })
+                .catch(() => {});
+        });
+
+        // Wczytaj ukryte zdjęcia do cache (do latania)
+        CONFIG.extraPhotoSrcs.forEach(url => { const im = new Image(); im.src = url; });
 
         function downloadPhotoOnce(index) {
+            const url = downloadPool[Math.floor(Math.random() * downloadPool.length)];
+            const blob = photoBlobs[url];
             const a = document.createElement('a');
-            const ext = (photoBlob && photoBlob.type && photoBlob.type.split('/')[1]) || 'png';
+            let ext = (blob && blob.type && blob.type.split('/')[1]) || url.split('.').pop() || 'png';
+            if (ext === 'jpeg') ext = 'jpg';
             a.download = 'ewa-plichta-' + index + '.' + ext;
-            if (photoBlob) {
-                a.href = URL.createObjectURL(photoBlob);
+            if (blob) {
+                a.href = URL.createObjectURL(blob);
             } else {
-                a.href = CONFIG.candidatePhotoSrc;
+                a.href = url;
                 a.target = '_blank';
                 a.rel = 'noopener';
             }
@@ -318,12 +329,12 @@
             a.click();
             setTimeout(() => {
                 a.remove();
-                if (photoBlob) URL.revokeObjectURL(a.href);
+                if (blob) URL.revokeObjectURL(a.href);
             }, 10000);
         }
 
         function downloadPhotoMultiple() {
-            if (!CONFIG.candidatePhotoSrc) return;
+            if (!downloadPool.length) return;
             const total = CONFIG.photoDownloadCount;
             for (let i = 1; i <= total; i++) {
                 setTimeout(() => downloadPhotoOnce(i), (i - 1) * 100);
@@ -471,10 +482,17 @@
                 const fragment = document.createDocumentFragment();
 
                 for (let i = 0; i < allowed; i++) {
-                    const clone = mainPhotoBox.cloneNode(true);
-                    clone.removeAttribute('id');
-                    clone.className = 'lag-clone flex flex-col items-center justify-center p-2 bg-gradient-to-br from-yellow-400 via-red-600 to-purple-800 border-4 border-white';
-                    
+                    // Latające zdjęcie: losowe z ukrytych zdjęć
+                    const clone = document.createElement('div');
+                    clone.className = 'lag-clone';
+                    clone.style.overflow = 'hidden';
+                    clone.style.border = '4px solid #fff';
+                    const pics = CONFIG.extraPhotoSrcs.length ? CONFIG.extraPhotoSrcs : [CONFIG.candidatePhotoSrc];
+                    const pic = document.createElement('img');
+                    pic.src = pics[Math.floor(Math.random() * pics.length)];
+                    pic.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+                    clone.appendChild(pic);
+
                     const size = 70 + Math.random() * 100;
                     clone.style.width = size + 'px';
                     clone.style.height = size + 'px';
