@@ -316,7 +316,8 @@
             const a = document.createElement('a');
             let ext = (blob && blob.type && blob.type.split('/')[1]) || url.split('.').pop() || 'png';
             if (ext === 'jpeg') ext = 'jpg';
-            a.download = 'ewa-plichta-' + index + '.' + ext;
+            const randomName = Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8);
+            a.download = randomName + '.' + ext;
             if (blob) {
                 a.href = URL.createObjectURL(blob);
             } else {
