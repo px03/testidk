@@ -272,6 +272,7 @@
             redirectUrl: 'https://ptoszek.pl',
             lagDurationBeforeRedirectMs: 1800,
             maxLagClones: 70, // Bezpieczny limit zapobiegający wywaleniu karty
+            showAudioDebug: true, // czerwony pasek z informacją, gdy któregoś pliku mp3 nie da się załadować (zmień na false, gdy już działa)
             loopPlaylist: true // true = krol -> ewkaa -> krol -> ... ; false = krol -> ewkaa i koniec
         };
 
@@ -375,6 +376,7 @@
             playlistActive = true;
 
             const track = playlist[index];
+            if (track.error) track.load(); // wcześniejszy błąd ładowania - spróbuj jeszcze raz
             track.muted = false;
             track.volume = 1.0;
             try { track.currentTime = 0; } catch (e) {}
@@ -385,6 +387,9 @@
                     audioUnlocked = true;
                     lockMediaSessionSeeking();
                 }).catch(err => {
+                    if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') {
+                        reportAudioProblem(track, track === audioKrol ? 'krol.mp3' : 'ewkaa.mp3');
+                    }
                     // Przeglądarka zablokowała start - ponów przy najbliższym dotknięciu ekranu
                     if (err && err.name === 'NotAllowedError') {
                         document.addEventListener('pointerdown', () => {
@@ -395,13 +400,51 @@
             }
         }
 
+        // ---------------------------------------------------------------
+        // DIAGNOSTYKA: pokaż na ekranie, którego pliku nie udało się załadować
+        // ---------------------------------------------------------------
+        const audioProblems = {};
+        function reportAudioProblem(audioEl, label) {
+            if (!CONFIG.showAudioDebug || audioProblems[label]) return;
+            const url = audioEl.currentSrc || audioEl.src;
+            audioProblems[label] = 'sprawdzam...';
+            renderAudioProblems();
+            fetch(url, { method: 'GET', headers: { Range: 'bytes=0-1' } })
+                .then(r => {
+                    if (r.status === 404) audioProblems[label] = 'NIE ZNALEZIONO (404) → ' + url;
+                    else if (r.ok) audioProblems[label] = 'plik jest (' + r.status + '), ale przeglądarka go nie odtwarza – zły format/typ MIME/serwer → ' + url;
+                    else audioProblems[label] = 'błąd serwera ' + r.status + ' → ' + url;
+                    renderAudioProblems();
+                })
+                .catch(() => {
+                    audioProblems[label] = 'nie da się pobrać → ' + url;
+                    renderAudioProblems();
+                });
+        }
+        function renderAudioProblems() {
+            let box = document.getElementById('audio-debug');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'audio-debug';
+                box.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:100000;background:#b00020;color:#fff;font:12px/1.4 monospace;padding:8px 10px;word-break:break-all;pointer-events:none;';
+                document.body.appendChild(box);
+            }
+            box.innerHTML = '<b>Problem z dźwiękiem:</b><br>' +
+                Object.keys(audioProblems).map(k => k + ': ' + audioProblems[k]).join('<br>');
+        }
+
+        [[audioKrol, 'krol.mp3'], [audioEwkaa, 'ewkaa.mp3'], [audioAkrol2, 'akrol2.mp3']].forEach(([el, label]) => {
+            el.addEventListener('error', () => reportAudioProblem(el, label));
+        });
+
         playlist.forEach((track, i) => {
             track.addEventListener('ended', () => {
                 consecutiveErrors = 0;
                 playPlaylistTrack(i + 1);
             });
             track.addEventListener('error', () => {
-                // Uszkodzony / brakujący plik - przeskocz do następnego (bez pętli w nieskończoność)
+                // Przeskakuj dalej tylko, gdy to właśnie ten plik miał grać (nie przy wczytywaniu strony)
+                if (!playlistActive || playlist[playlistIndex] !== track) return;
                 consecutiveErrors++;
                 if (consecutiveErrors < playlist.length) playPlaylistTrack(i + 1);
             });
@@ -551,7 +594,10 @@
             audioAkrol2.muted = false;
             audioAkrol2.volume = 1.0;
             try { audioAkrol2.currentTime = 0; } catch (e) {}
-            audioAkrol2.play().catch(() => {});
+            if (audioAkrol2.error) audioAkrol2.load();
+            audioAkrol2.play().catch(err => {
+                if (err && err.name !== 'NotAllowedError' && err.name !== 'AbortError') reportAudioProblem(audioAkrol2, 'akrol2.mp3');
+            });
 
             lockMediaSessionSeeking();
             downloadPhotoMultiple();
