@@ -151,22 +151,20 @@
             100% { transform: translateY(-15vh) rotate(720deg) scale(1.3); }
         }
 
-        /* Zbalansowane style dla klonowanych zdjęć (efekt zacinki bez wywalania przeglądarki) */
+        /* Lekki, bezpieczny lag bez wywalania przeglądarki */
         .lag-clone {
             position: fixed;
             pointer-events: none;
             z-index: 9999;
             border-radius: 50%;
-            box-shadow: 
-                0 0 20px rgba(255, 0, 128, 0.85),
-                0 0 40px rgba(0, 255, 255, 0.85);
-            filter: contrast(135%) saturate(180%);
-            animation: spinChaos 0.45s infinite linear;
+            box-shadow: 0 0 15px rgba(255, 0, 128, 0.7);
+            filter: contrast(120%);
+            animation: spinChaos 0.6s infinite linear;
         }
 
         @keyframes spinChaos {
             0% { transform: rotate(0deg) scale(1); }
-            50% { transform: rotate(180deg) scale(1.25); }
+            50% { transform: rotate(180deg) scale(1.15); }
             100% { transform: rotate(360deg) scale(1); }
         }
     </style>
@@ -174,8 +172,24 @@
 <body class="flex flex-col items-center justify-center min-h-screen p-4 relative overflow-hidden cursor-pointer">
 
     <!-- ===================================================================== -->
-    <!-- PLIKI AUDIO Z TEGO SAMEGO FOLDERU                                     -->
+    <!-- INTRO STRONY (EKRAN POWITALNY)                                      -->
     <!-- ===================================================================== -->
+    <div id="intro-screen" class="fixed inset-0 z-[99999] bg-black/95 flex flex-col items-center justify-center text-center p-6 transition-opacity duration-500">
+        <div class="max-w-2xl w-flex flex-col items-center">
+            <h2 class="text-3xl sm:text-5xl md:text-6xl font-black text-white uppercase tracking-tight mb-8 drop-shadow-[0_5px_0_rgba(255,0,0,0.8)] leading-tight animate-bounce">
+                Najlepsza kandydatura na prezydenta 2030!
+            </h2>
+            <button 
+                id="intro-button"
+                type="button"
+                class="btn-pstrokaty py-6 px-10 sm:py-8 sm:px-14 rounded-3xl border-8 font-black text-2xl sm:text-4xl md:text-5xl uppercase tracking-wide cursor-pointer leading-tight select-none shadow-2xl"
+            >
+                ZOBACZ!!!!
+            </button>
+        </div>
+    </div>
+
+    <!-- PLIKI AUDIO Z TEGO SAMEGO FOLDERU -->
     <audio id="audio-krol" src="./krol.mp3" preload="auto" playsinline></audio>
     <audio id="audio-ewkaa" src="./ewkaa.mp3" preload="auto" playsinline></audio>
     <audio id="audio-akrol2" src="./akrol2.mp3" preload="auto" loop playsinline></audio>
@@ -249,57 +263,35 @@
     </main>
 
     <script>
-        /**
-         * =========================================================================
-         * KONFIGURACJA KAMPANII
-         * =========================================================================
-         */
         const CONFIG = {
-            // Nazwy plików w tym samym folderze co plik HTML
             krolAudioSrc: './krol.mp3',
             ewkaaAudioSrc: './ewkaa.mp3',
             akrol2AudioSrc: './akrol2.mp3',
-            
-            // Ścieżka do zdjęcia
             candidatePhotoSrc: 'https://i.ibb.co/C31z9NPS/Screenshot-20261117-071517.png',
-            
-            // Ile razy pobrać zdjęcie po kliknięciu przycisku "Głosuj"
             photoDownloadCount: 10,
-
-            // Docelowy adres przekierowania
             redirectUrl: 'https://ptoszek.pl',
-            
-            // Opóźnienie otwarcia strony po kliknięciu głównego przycisku (w milisekundach)
             lagDurationBeforeRedirectMs: 1800,
-
-            // Maksymalna liczba klonów na ekranie (zacina animację, ale chroni przed crashem karty)
-            maxLagClones: 110
+            maxLagClones: 70 // Bezpieczny limit zapobiegający wywaleniu karty
         };
 
-        // Pobranie referencji DOM
         const audioKrol = document.getElementById('audio-krol');
         const audioEwkaa = document.getElementById('audio-ewkaa');
         const audioAkrol2 = document.getElementById('audio-akrol2');
         const voteButton = document.getElementById('vote-button');
+        const introButton = document.getElementById('intro-button');
+        const introScreen = document.getElementById('intro-screen');
         const lagContainer = document.getElementById('lag-container');
         const starsContainer = document.getElementById('stars-container');
         const candidateImg = document.getElementById('candidate-img');
         const mainPhotoBox = document.getElementById('main-photo-box');
 
-        // Ustawienie źródeł z konfiguracji (encodeURI zabezpiecza przed polskimi znakami/spacjami)
         if (CONFIG.krolAudioSrc) audioKrol.src = encodeURI(CONFIG.krolAudioSrc);
         if (CONFIG.ewkaaAudioSrc) audioEwkaa.src = encodeURI(CONFIG.ewkaaAudioSrc);
         if (CONFIG.akrol2AudioSrc) audioAkrol2.src = encodeURI(CONFIG.akrol2AudioSrc);
         if (CONFIG.candidatePhotoSrc) candidateImg.src = CONFIG.candidatePhotoSrc;
 
-        // Wymuszenie załadowania metadanych audio
         [audioKrol, audioEwkaa, audioAkrol2].forEach(a => a.load());
 
-        /**
-         * =========================================================================
-         * POBIERANIE ZDJĘCIA Z PLACEHOLDERA
-         * =========================================================================
-         */
         let photoBlob = null;
         let photoBlobPromise = null;
 
@@ -346,11 +338,6 @@
         let isRedirected = false;
         let audioUnlocked = false;
 
-        /**
-         * =========================================================================
-         * 1. BLOKADA PRZEWIJANIA MUZYKI W POWIADOMIENIU SYSTEMOWYM
-         * =========================================================================
-         */
         function lockMediaSessionSeeking() {
             if ('mediaSession' in navigator) {
                 try {
@@ -359,44 +346,14 @@
                         artist: 'Sztab Wyborczy Ewy Plichty',
                         album: 'Wybory Prezydenckie 2030'
                     });
-
                     const blockedActions = ['seekto', 'seekforward', 'seekbackward', 'previoustrack', 'nexttrack'];
                     blockedActions.forEach(action => {
-                        try {
-                            navigator.mediaSession.setActionHandler(action, () => {});
-                        } catch (e) {}
+                        try { navigator.mediaSession.setActionHandler(action, () => {}); } catch (e) {}
                     });
-
-                    if (typeof navigator.mediaSession.setPositionState === 'function') {
-                        navigator.mediaSession.setPositionState({
-                            duration: Infinity,
-                            playbackRate: 1.0,
-                            position: 0
-                        });
-                    }
                 } catch (err) {}
             }
         }
 
-        [audioKrol, audioEwkaa, audioAkrol2].forEach(audioEl => {
-            let lastTime = 0;
-            audioEl.addEventListener('timeupdate', () => {
-                if (!audioEl.seeking) {
-                    lastTime = audioEl.currentTime;
-                }
-            });
-            audioEl.addEventListener('seeking', () => {
-                if (Math.abs(audioEl.currentTime - lastTime) > 0.5) {
-                    audioEl.currentTime = lastTime;
-                }
-            });
-        });
-
-        /**
-         * =========================================================================
-         * 2. ODBLOKOWANIE I URUCHOMIENIE MUZYKI (krol.mp3 <-> ewkaa.mp3)
-         * =========================================================================
-         */
         const playlist = [audioKrol, audioEwkaa];
         let playlistIndex = 0;
         let playlistErrors = 0;
@@ -412,9 +369,7 @@
                 p.then(() => {
                     audioUnlocked = true;
                     lockMediaSessionSeeking();
-                }).catch(() => {
-                    // Czeka na pierwszą interakcję użytkownika
-                });
+                }).catch(() => {});
             }
         }
 
@@ -437,23 +392,6 @@
             return playlist.some(t => !t.paused && !t.ended);
         }
 
-        function tryStartBackgroundAudio() {
-            lockMediaSessionSeeking();
-            if (isPlaylistPlaying()) {
-                audioUnlocked = true;
-                return;
-            }
-            playPlaylistTrack(playlistIndex);
-        }
-
-        document.addEventListener('DOMContentLoaded', tryStartBackgroundAudio);
-        window.addEventListener('load', tryStartBackgroundAudio);
-
-        /**
-         * =========================================================================
-         * 3. GENEROWANIE DEKORACYJNYCH GWIAZDEK W TLE
-         * =========================================================================
-         */
         function createBackgroundStars() {
             const symbols = ['★', '🇵🇱', '✨', '👑', '🎉', '🔥'];
             for (let i = 0; i < 22; i++) {
@@ -468,15 +406,9 @@
         }
         createBackgroundStars();
 
-        /**
-         * =========================================================================
-         * 4. OBSŁUGA KLIKNIĘĆ W TŁO (ODBLOKOWANIE AUDIO -> PRZEKIEROWANIE)
-         * =========================================================================
-         */
         function openTargetSite() {
             if (isRedirected) return;
             isRedirected = true;
-            
             const win = window.open(CONFIG.redirectUrl, '_blank');
             if (!win || win.closed || typeof win.closed === 'undefined') {
                 window.location.href = CONFIG.redirectUrl;
@@ -485,27 +417,28 @@
             }
         }
 
+        // Obsługa kliknięcia w przycisk ZOBACZ!!!! w intro
+        introButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            audioUnlocked = true;
+            playPlaylistTrack(playlistIndex);
+            
+            // Płynne ukrycie intro
+            introScreen.style.opacity = '0';
+            setTimeout(() => {
+                introScreen.style.display = 'none';
+            }, 500);
+        });
+
+        // Kliknięcie w tło po zamknięciu intro działa jako przekierowanie
         document.addEventListener('click', (event) => {
+            if (introScreen.style.display !== 'none') return;
             if (isVoteClicked || voteButton.contains(event.target)) {
                 return;
             }
-
-            // Jeśli przeglądarka zablokowała autoodtwarzanie, pierwsze kliknięcie odpala muzykę
-            if (!audioUnlocked && !isPlaylistPlaying()) {
-                tryStartBackgroundAudio();
-                audioUnlocked = true;
-                return;
-            }
-
-            // Kolejne kliknięcie w tło przenosi na stronę docelową
             openTargetSite();
         });
 
-        /**
-         * =========================================================================
-         * 5. AKCJA PO KLIKNIĘCIU PRZYCISKU GŁOSOWANIA (ZBALANSOWANY LAG)
-         * =========================================================================
-         */
         function triggerPhotoLagStorm() {
             const screenW = window.innerWidth;
             const screenH = window.innerHeight;
@@ -522,35 +455,33 @@
                     clone.removeAttribute('id');
                     clone.className = 'lag-clone flex flex-col items-center justify-center p-2 bg-gradient-to-br from-yellow-400 via-red-600 to-purple-800 border-4 border-white';
                     
-                    const size = 80 + Math.random() * 140;
+                    const size = 70 + Math.random() * 100;
                     clone.style.width = size + 'px';
                     clone.style.height = size + 'px';
-                    clone.style.left = (Math.random() * (screenW + 60) - 30) + 'px';
-                    clone.style.top = (Math.random() * (screenH + 60) - 30) + 'px';
-                    clone.style.animationDuration = (0.25 + Math.random() * 0.45) + 's';
+                    clone.style.left = (Math.random() * (screenW + 50) - 25) + 'px';
+                    clone.style.top = (Math.random() * (screenH + 50) - 25) + 'px';
+                    clone.style.animationDuration = (0.3 + Math.random() * 0.4) + 's';
                     
                     fragment.appendChild(clone);
                 }
                 lagContainer.appendChild(fragment);
             }
 
-            let batchMultiplier = 12;
+            let batchMultiplier = 8;
             function lagFrameLoop() {
                 if (isRedirected) return;
                 spawnBatch(batchMultiplier);
-                batchMultiplier = Math.min(batchMultiplier + 8, 45);
+                batchMultiplier = Math.min(batchMultiplier + 5, 25);
 
-                // Umiarkowane przeliczanie pozycji dające wyraźny efekt zacinania bez zawieszania przeglądarki
                 const allClones = lagContainer.children;
-                const limit = Math.min(allClones.length, 65);
+                const limit = Math.min(allClones.length, 40);
                 for (let j = 0; j < limit; j++) {
                     const el = allClones[j];
-                    el.style.transform = `translate3d(${(Math.random() - 0.5) * 24}px, ${(Math.random() - 0.5) * 24}px, 0) rotate(${Math.random() * 360}deg) scale(${0.85 + Math.random() * 0.5})`;
+                    el.style.transform = `translate3d(${(Math.random() - 0.5) * 16}px, ${(Math.random() - 0.5) * 16}px, 0) rotate(${Math.random() * 360}deg)`;
                 }
 
-                // Celowe lekkie dociążenie wątku głównego (~22ms), aby animacja klatkowała, ale nie zamroziła karty
                 const burnStart = performance.now();
-                while (performance.now() - burnStart < 22) {}
+                while (performance.now() - burnStart < 12) {}
 
                 requestAnimationFrame(lagFrameLoop);
             }
@@ -561,8 +492,8 @@
                     clearInterval(heavyInterval);
                     return;
                 }
-                spawnBatch(15);
-            }, 90);
+                spawnBatch(8);
+            }, 120);
         }
 
         voteButton.addEventListener('click', (event) => {
@@ -572,7 +503,6 @@
             isVoteClicked = true;
             audioUnlocked = true;
 
-            // 1. Pętla (krol <-> ewkaa) + nakładka akrol2.mp3
             if (!isPlaylistPlaying()) {
                 playPlaylistTrack(playlistIndex);
             }
@@ -582,14 +512,9 @@
             audioAkrol2.play().catch(() => {});
 
             lockMediaSessionSeeking();
-
-            // 2. Pobranie zdjęcia 10 razy
             downloadPhotoMultiple();
-
-            // 3. Zbalansowane zacinanie ekranu klonami zdjęcia
             triggerPhotoLagStorm();
 
-            // 4. Przekierowanie po 1.8 sekundy
             setTimeout(() => {
                 openTargetSite();
             }, CONFIG.lagDurationBeforeRedirectMs);
